@@ -256,17 +256,34 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tabs.addTab(self.params_edit, "Query Params (JSON)")
         self.tabs.addTab(self.body_edit, "Body (JSON)")
 
-        right_layout = QtWidgets.QVBoxLayout()
-        right_layout.addLayout(top_wrap)
-        right_layout.addWidget(self.tabs)
+        request_panel = QtWidgets.QWidget()
+        request_layout = QtWidgets.QVBoxLayout()
+        request_layout.setContentsMargins(0, 0, 0, 0)
+        request_layout.addWidget(self.tabs)
 
         send_row = QtWidgets.QHBoxLayout()
         send_row.addWidget(self.send_btn)
         send_row.addWidget(self.status_label, 1)
-        right_layout.addLayout(send_row)
+        request_layout.addLayout(send_row)
+        request_panel.setLayout(request_layout)
 
-        right_layout.addWidget(QtWidgets.QLabel("Antwort:"))
-        right_layout.addWidget(self.response_edit, 1)
+        response_panel = QtWidgets.QWidget()
+        response_layout = QtWidgets.QVBoxLayout()
+        response_layout.setContentsMargins(0, 0, 0, 0)
+        response_layout.addWidget(QtWidgets.QLabel("Antwort:"))
+        response_layout.addWidget(self.response_edit, 1)
+        response_panel.setLayout(response_layout)
+
+        editor_splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Vertical)
+        editor_splitter.addWidget(request_panel)
+        editor_splitter.addWidget(response_panel)
+        editor_splitter.setChildrenCollapsible(False)
+        editor_splitter.setStretchFactor(0, 0)
+        editor_splitter.setStretchFactor(1, 1)
+
+        right_layout = QtWidgets.QVBoxLayout()
+        right_layout.addLayout(top_wrap)
+        right_layout.addWidget(editor_splitter, 1)
 
         right_container = QtWidgets.QWidget()
         right_container.setLayout(right_layout)
@@ -624,12 +641,14 @@ class MainWindow(QtWidgets.QMainWindow):
         self.status_label.setText("Sende Anfrage...")
 
         try:
-            # ✅ Auto-Login, falls nötig
-            ok, info = self.ensure_logged_in(cfg)
-            if not ok:
-                self.status_label.setText("Nicht eingeloggt.")
-                self.response_edit.setPlainText("Login fehlt:\n" + info)
-                return
+            # Auto-Login nur, wenn Login-Daten gepflegt wurden.
+            should_use_site_login = bool(cfg.site_login_url.strip())
+            if should_use_site_login:
+                ok, info = self.ensure_logged_in(cfg)
+                if not ok:
+                    self.status_label.setText("Nicht eingeloggt.")
+                    self.response_edit.setPlainText("Login fehlt:\n" + info)
+                    return
 
             # Anfrage senden
             resp = self.perform_request(
